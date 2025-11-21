@@ -3,10 +3,7 @@ import java.util.Scanner;
 public class PetMain {
 
     public static void main(String[] args) {
-
         PetInterface sistema = new PetInterface();
-        sistema.recuperaDados();
-
         Scanner entrada = new Scanner(System.in);
         int opcao = 0;
 
@@ -22,14 +19,17 @@ public class PetMain {
             opcao = entrada.nextInt();
             entrada.nextLine();
 
-            if (opcao == 1) sistema.cadastrar(entrada);
-            else if (opcao == 2) sistema.imprimirCadastro();
-            else if (opcao == 3) sistema.buscar(entrada);
-            else if (opcao == 4) sistema.excluir(entrada);
+            switch (opcao) {
+                case 1 -> sistema.cadastrarTutor();
+                case 2 -> sistema.imprimirCadastro();
+                case 3 -> sistema.buscarTutor();
+                case 4 -> sistema.excluirTutor();
+            }
 
         } while (opcao != 5);
 
         sistema.gravaDados();
         System.out.println("Programa encerrado.");
+        entrada.close();
     }
 }

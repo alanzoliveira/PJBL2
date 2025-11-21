@@ -1,178 +1,224 @@
-import java.util.Scanner;
-import java.io.File;
-import java.io.PrintStream;
-import java.io.IOException;
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
 
-public class PetInterface {
+public class PetInterface extends JFrame {
 
-    private Pet[] pets;
-    private int qtdPets;
-    private int proximoCodigoTutor;
+    private ArrayList<Tutor> tutores;
+    private static final String ARQUIVO = "tutores.dat";
+
+    private JButton btnCadastrar, btnImprimir, btnBuscar, btnExcluir, btnEncerrar;
+    private JTextArea logArea;
+    private static Font fontePadrao = new Font("Consolas", Font.PLAIN, 13);
+
+    private int proximoCodigoTutor = 1;
 
     public PetInterface() {
-        pets = new Pet[1000];
-        qtdPets = 0;
-        proximoCodigoTutor = 1;
+        super("Cadastro de Tutores e Pets");
+        setSize(600, 400);
+        setLayout(new FlowLayout());
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        tutores = new ArrayList<>();
+        recuperaDados();
+
+        btnCadastrar = new JButton("Cadastrar Tutor + Pets");
+        btnImprimir = new JButton("Imprimir Cadastro");
+        btnBuscar = new JButton("Buscar por Código");
+        btnExcluir = new JButton("Excluir por Código");
+        btnEncerrar = new JButton("Encerrar");
+
+        add(btnCadastrar);
+        add(btnImprimir);
+        add(btnBuscar);
+        add(btnExcluir);
+        add(btnEncerrar);
+
+        logArea = new JTextArea(10, 50);
+        logArea.setEditable(false);
+        logArea.setFont(fontePadrao);
+        add(new JScrollPane(logArea));
+
+        btnCadastrar.addActionListener(e -> cadastrarTutor());
+        btnImprimir.addActionListener(e -> imprimirCadastro());
+        btnBuscar.addActionListener(e -> buscarTutor());
+        btnExcluir.addActionListener(e -> excluirTutor());
+        btnEncerrar.addActionListener(e -> {
+            gravaDados();
+            dispose();
+            System.exit(0);
+        });
+
+        setVisible(true);
     }
 
-    public void recuperaDados() {
-        try {
-            File f = new File("cadastro_pet.dat");
-            if (!f.exists()) return;
+    // ===== MÉTODOS PÚBLICOS =====
+    public void cadastrarTutor() {
+        JFrame frame = new JFrame("Cadastro de Tutor + Pets");
+        frame.setLayout(new FlowLayout());
+        frame.setSize(500, 400);
+        frame.setLocationRelativeTo(null);
 
-            Scanner arq = new Scanner(f);
+        JTextField nomeTutor = new JTextField(20);
+        JTextField codTutor = new JTextField(5);
+        codTutor.setText("" + geraCodigo());
+        codTutor.setEditable(false);
+        frame.add(new JLabel("Nome do Tutor:"));
+        frame.add(nomeTutor);
 
-            while (arq.hasNextLine()) {
-                String linha = arq.nextLine();
-                String[] partes = linha.split("\t");
+        JTextField nomePet = new JTextField(15);
+        JTextField dataPet = new JTextField(10);
+        frame.add(new JLabel("Nome do Pet:"));
+        frame.add(nomePet);
+        frame.add(new JLabel("Data de Nascimento (aaaa-mm-dd):"));
+        frame.add(dataPet);
 
-                int codigoTutor = Integer.parseInt(partes[0]);
-                String nome = partes[1];
-                int idade = Integer.parseInt(partes[2]);
-                String especie = partes[3];
-                String raca = partes[4];
-                String sexo = partes[5];
+        JButton btnSalvar = new JButton("Salvar Tutor + Pet");
+        frame.add(btnSalvar);
 
-                pets[qtdPets] = new Pet(codigoTutor, nome, idade, especie, raca, sexo);
-                qtdPets++;
+        btnSalvar.addActionListener(e -> {
+            String nomeT = nomeTutor.getText();
+            String nomeP = nomePet.getText();
+            String data = dataPet.getText();
 
-                if (codigoTutor >= proximoCodigoTutor) {
-                    proximoCodigoTutor = codigoTutor + 1;
-                }
+            if (nomeT.isEmpty() || nomeP.isEmpty() || data.isEmpty()) {
+                JOptionPane.showMessageDialog(frame, "Todos os campos devem ser preenchidos!");
+                return;
             }
-            arq.close();
 
+            LocalDate dataNascPet;
+            try {
+                dataNascPet = LocalDate.parse(data);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(frame, "Data inválida!");
+                return;
+            }
+
+            Pet pet = new Pet(nomeP, dataNascPet, "Desconhecida", "Desconhecida", "Desconhecido");
+            Tutor tutor = new Tutor(geraCodigo(), nomeT, "");
+            tutor.addPet(pet);
+            tutores.add(tutor);
+            gravaDados();
+
+            log("Cadastrado Tutor: " + nomeT + " com Pet: " + nomeP);
+            JOptionPane.showMessageDialog(frame, "Cadastro realizado com sucesso!");
+            frame.dispose();
+        });
+
+        frame.setVisible(true);
+    }
+
+    public void imprimirCadastro() {
+        if (tutores.isEmpty()) {
+            log("<Cadastro vazio>");
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("Código | Tutor | Pets (Nome - Idade)\n");
+        sb.append("---------------------------------------------\n");
+        for (Tutor t : tutores) {
+            sb.append(t.getCodigo()).append(" | ").append(t.getNome()).append(" | ");
+            for (Pet p : t.getPets()) {
+                sb.append(p.getNome()).append(" (").append(p.getIdade()).append(" anos), ");
+            }
+            sb.append("\n");
+        }
+        log(sb.toString());
+    }
+
+    public void buscarTutor() {
+        String input = JOptionPane.showInputDialog("Digite o código do Tutor:");
+        int codigo;
+        try {
+            codigo = Integer.parseInt(input);
         } catch (Exception e) {
-            System.out.println("Erro ao recuperar dados: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Código inválido!");
+            return;
+        }
+        Tutor encontrado = null;
+        for (Tutor t : tutores) {
+            if (t.getCodigo() == codigo) {
+                encontrado = t;
+                break;
+            }
+        }
+        if (encontrado != null) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Tutor: ").append(encontrado.getNome()).append("\n");
+            for (Pet p : encontrado.getPets()) {
+                sb.append("Pet: ").append(p.getNome())
+                  .append(" - Idade: ").append(p.getIdade()).append(" anos\n");
+            }
+            JOptionPane.showMessageDialog(this, sb.toString());
+            log("Busca realizada para Tutor: " + encontrado.getNome());
+        } else {
+            JOptionPane.showMessageDialog(this, "Tutor não encontrado!");
+            log("Busca: Tutor código " + codigo + " inexistente.");
+        }
+    }
+
+    public void excluirTutor() {
+        String input = JOptionPane.showInputDialog("Digite o código do Tutor a ser excluído:");
+        int codigo;
+        try {
+            codigo = Integer.parseInt(input);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Código inválido!");
+            return;
+        }
+        Tutor alvo = null;
+        for (Tutor t : tutores) {
+            if (t.getCodigo() == codigo) {
+                alvo = t;
+                break;
+            }
+        }
+        if (alvo != null) {
+            tutores.remove(alvo);
+            gravaDados();
+            JOptionPane.showMessageDialog(this, "Tutor excluído com sucesso!");
+            log("Excluído Tutor: " + alvo.getNome());
+        } else {
+            JOptionPane.showMessageDialog(this, "Tutor não encontrado!");
+            log("Exclusão: Tutor código " + codigo + " inexistente.");
+        }
+    }
+
+    // ===== AUXILIARES =====
+    private void log(String msg) {
+        logArea.append(msg + "\n");
+    }
+
+    @SuppressWarnings("unchecked")
+    private void recuperaDados() {
+        File f = new File(ARQUIVO);
+        if (!f.exists()) return;
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
+            tutores = (ArrayList<Tutor>) ois.readObject();
+            if (!tutores.isEmpty()) {
+                proximoCodigoTutor = tutores.get(tutores.size() - 1).getCodigo() + 1;
+            }
+        } catch (Exception e) {
+            log("Erro ao carregar dados: " + e.getMessage());
         }
     }
 
     public void gravaDados() {
-        try {
-            PrintStream out = new PrintStream("cadastro_pet.dat");
-
-            for (int i = 0; i < qtdPets; i++) {
-                out.println(pets[i].toString());
-            }
-
-            out.close();
-
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ARQUIVO))) {
+            oos.writeObject(tutores);
         } catch (IOException e) {
-            System.out.println("Erro ao gravar dados: " + e.getMessage());
+            log("Erro ao gravar dados: " + e.getMessage());
         }
     }
 
-    public void cadastrar(Scanner entrada) {
-
-        int codigoTutor = proximoCodigoTutor;
-        proximoCodigoTutor++;
-
-        System.out.print("Nome do tutor: ");
-        String nomeTutor = entrada.nextLine();
-
-        System.out.print("Telefone do tutor: ");
-        String telefone = entrada.nextLine();
-
-        System.out.print("Quantidade de pets do tutor: ");
-        int qtd = entrada.nextInt();
-        entrada.nextLine();
-
-        for (int i = 0; i < qtd; i++) {
-            System.out.println("\n--- Cadastro do Pet " + (i + 1) + " ---");
-
-            System.out.print("Nome: ");
-            String nome = entrada.nextLine();
-
-            System.out.print("Idade: ");
-            int idade = entrada.nextInt();
-            entrada.nextLine();
-
-            System.out.print("Especie: ");
-            String especie = entrada.nextLine();
-
-            System.out.print("Raca: ");
-            String raca = entrada.nextLine();
-
-            System.out.print("Sexo (M/F): ");
-            String sexo = entrada.nextLine();
-
-            pets[qtdPets] = new Pet(codigoTutor, nome, idade, especie, raca, sexo);
-            qtdPets++;
-        }
-
-        gravaDados();
-        System.out.println("\nCadastro realizado com sucesso! Codigo do tutor = " + codigoTutor);
+    private int geraCodigo() {
+        return proximoCodigoTutor++;
     }
 
-    public void imprimirCadastro() {
-        if (qtdPets == 0) {
-            System.out.println("Nao ha pets cadastrados.");
-            return;
-        }
-
-        for (int i = 0; i < qtdPets; i++) {
-            System.out.println(pets[i].toString());
-        }
-    }
-
-    public void buscar(Scanner entrada) {
-        System.out.print("Informe o codigo do tutor (numero): ");
-
-        if (!entrada.hasNextInt()) {
-            System.out.println("Codigo invalido, digite um numero.");
-            entrada.nextLine();
-            return;
-        }
-
-        int codigo = entrada.nextInt();
-        entrada.nextLine();
-
-        boolean achou = false;
-
-        for (int i = 0; i < qtdPets; i++) {
-            if (pets[i].getCodigoTutor() == codigo) {
-                System.out.println(pets[i].toString());
-                achou = true;
-            }
-        }
-
-        if (!achou) System.out.println("Nenhum pet encontrado para este tutor.");
-    }
-
-    public void excluir(Scanner entrada) {
-        System.out.print("Informe o codigo do tutor (numero): ");
-
-        if (!entrada.hasNextInt()) {
-            System.out.println("Codigo invalido.");
-            entrada.nextLine();
-            return;
-        }
-
-        int codigo = entrada.nextInt();
-        entrada.nextLine();
-
-        int novaQtd = 0;
-        boolean excluiu = false;
-
-        Pet[] novaLista = new Pet[1000];
-
-        for (int i = 0; i < qtdPets; i++) {
-            if (pets[i].getCodigoTutor() != codigo) {
-                novaLista[novaQtd] = pets[i];
-                novaQtd++;
-            } else {
-                excluiu = true;
-            }
-        }
-
-        pets = novaLista;
-        qtdPets = novaQtd;
-
-        if (excluiu) {
-            gravaDados();
-            System.out.println("Pets excluidos com sucesso.");
-        } else {
-            System.out.println("Codigo nao encontrado.");
-        }
+    public static void main(String[] args) {
+        new PetInterface();
     }
 }

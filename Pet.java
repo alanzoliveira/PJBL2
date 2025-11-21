@@ -1,31 +1,33 @@
-public class Pet {
+import java.io.Serializable;
+import java.time.LocalDate;
+import java.time.Period;
 
-    private int codigoTutor;
+public class Pet implements Serializable {
+
     private String nome;
-    private int idade;
+    private LocalDate dataNascimento;
     private String especie;
     private String raca;
     private String sexo;
 
-    public Pet(int codigoTutor, String nome, int idade, String especie, String raca, String sexo) {
-        this.codigoTutor = codigoTutor;
+    public Pet(String nome, LocalDate dataNascimento, String especie, String raca, String sexo) {
         this.nome = nome;
-        this.idade = idade;
+        this.dataNascimento = dataNascimento;
         this.especie = especie;
         this.raca = raca;
         this.sexo = sexo;
-    }
-
-    public int getCodigoTutor() {
-        return codigoTutor;
     }
 
     public String getNome() {
         return nome;
     }
 
+    public LocalDate getDataNascimento() {
+        return dataNascimento;
+    }
+
     public int getIdade() {
-        return idade;
+        return Period.between(dataNascimento, LocalDate.now()).getYears();
     }
 
     public String getEspecie() {
@@ -42,7 +44,7 @@ public class Pet {
 
     @Override
     public String toString() {
-        return codigoTutor + "\t" + nome + "\t" + idade + "\t" +
+        return nome + "\t" + dataNascimento + "\t" + getIdade() + "\t" +
                especie + "\t" + raca + "\t" + sexo;
     }
 }
